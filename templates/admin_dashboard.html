@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>ADMIN DASHBOARD</title>
+    <link 
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
+    rel="stylesheet">
+</head>
+<body class="container p-4">
+  <h1>WELCOME, ADMIN</h1><br>
+    <h2 style="text-align:center;"><u>ADMIN DASHBOARD</u></h2><br>
+    <form method="GET">
+        <div class="mb-3">
+            <input type="text" class="form-control" style="border-color: black;" name="search" placeholder="Search..." required>
+        </div><br>
+        <div style="text-align:center;">
+            <button type="submit" class="btn btn-success">SEARCH</button>
+        </div>
+    </form><br><hr>
+    <div style="text-align:center;">
+      <a href="/admin/create_lot" button class="btn btn-info">CREATE PARKING LOT</a>
+    </div>
+    {% for lot in lots %}
+    <div class="card my-3">
+      <div class="card-header">
+        <strong>{{ lot.location_name }}</strong> - {{ lot.address }}
+        <a href="/admin/edit_lot/{{ lot.id }}" button class="btn btn-warning">Edit Lot</a> |  
+        <a href="/admin/delete_lot/{{ lot.id }}" button class="btn btn-danger">Delete Lot</a>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          {% for spot in lot.spots %}
+            <div class="col-2 m-1">
+              <div class="p-2 border rounded {% if spot.is_occupied %}bg-danger text-white{% else %}bg-primary text-white{% endif %}">
+                Spot {{ spot.spot_number }}<br>
+                {% if spot.is_occupied %}
+                  <a href="/admin/user_detail/{{ spot.booked_by }}" button class="btn btn-success btn-sm">OCCUPIED See Details</a>
+                {% else %}
+                  Available
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+  <h2 style="text-align:center;">No Such Lots Created!</h2>
+  {% endfor %}<br>
+  <div style="text-align:center;">
+    <a href="/admin/login" button class="btn btn-danger">LOGOUT</a>
+  </div>
+</body>
+</html>
