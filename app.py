@@ -55,6 +55,8 @@ def home():
     return render_template('index.html')
 
 
+#----------USER ROUTES-----------------
+
 
 #USER REGISTER
 @app.route('/user/register', methods=['GET' , 'POST'])
@@ -76,6 +78,7 @@ def user_register():
     return render_template('user_register.html')
 
 
+#USER LOGIN
 @app.route('/user/login' , methods = ['GET' , 'POST'])
 def user_login():
     if request.method == "POST":
@@ -96,19 +99,50 @@ def user_login():
 
 
 
+
+#USER DASHBOARD
+@app.route('/user/dashboard')
+def user_dashboard():
+    if 'user_id' not in session:
+        return redirect('/user/login')
+    
+    search_query = request.args.get('search' ,'').strip().lower()
+
+    if search_query:
+        lots = ParkingLot.query.filter(
+            ParkingLot.location_name.ilike(f'%{ search_query }%') | 
+            ParkingLot.address.ilike(f'%{ search_query }%')
+        ).all()
+    else:
+        lots = ParkingLot.query.all()
+
+    return render_template('user_dashboard.html', username=session.get('user_username'), lots=lots, search_query=search_query)
+
+
+
+
 #BOOK SPOT
 @app.route('/user/book_spot/<int:spot_id>')
 def book_spot(spot_id):
     if "user_id" not in session:
         return redirect('/user/login')
     
+    user_id = session['user_id']
     spot = ParkingSpot.query.get_or_404(spot_id)
 
+    #  Step 1: Count how many active bookings this user already has
+    user_bookings_count = ParkingSpot.query.filter_by(booked_by=user_id, is_occupied=True).count()
+
+    if user_bookings_count >= 2:
+        return " You can only book up to 2 parking spots at a time.", 400
+
+    #  Step 2: Check if this spot is already booked
     if spot.is_occupied:
-        return "Spot Already Booked!", 400
-    
+        return " Spot Already Booked!", 400
+
+    #  Step 3: Book the spot
     spot.is_occupied = True
-    spot.booked_by = session['user_id']
+    spot.booked_by = user_id
     db.session.commit()
 
     return redirect('/user/dashboard')
@@ -131,6 +165,27 @@ def cancel_spot(spot_id):
     db.session.commit()
 
     return redirect('/user/dashboard')
+
+
+
+# -----------ADMIN ROUTES-----------------
+
+
+#ADMIN LOGIN
+@app.route('/admin/login' , methods=['GET' , 'POST'])
+def admin_login():
+    if request.method == "POST":
+        username = request.form['username']
+        password = request.form['password']
+        admin = Admin.query.filter_by(username = username, password = password).first()
+
+        if admin:
+            session['admin_id'] = admin.id
+            session['admin_username'] = admin.username
+            return redirect('/admin/dashboard')
+        else:
+            return render_template('admin_login.html', error = "Entered Deatils Are Invalid!")
+    return render_template('admin_login.html')
 
 
 
@@ -159,47 +214,7 @@ def edit_lot(lot_id):
     return render_template('edit_lot.html', lot=lot)
 
 
-
-#ADMIN LOGIN
-@app.route('/admin/login' , methods=['GET' , 'POST'])
-def admin_login():
-    if request.method == "POST":
-        username = request.form['username']
-        password = request.form['password']
-        admin = Admin.query.filter_by(username = username, password = password).first()
-
-        if admin:
-            session['admin_id'] = admin.id
-            session['admin_username'] = admin.username
-            return redirect('/admin/dashboard')
-        else:
-            return render_template('admin_login.html', error = "Entered Deatils Are Invalid!")
-    return render_template('admin_login.html')
-
-
-
-
-#USER DASHBOARD
-@app.route('/user/dashboard')
-def user_dashboard():
-    if 'user_id' not in session:
-        return redirect('/user/login')
     
-    search_query = request.args.get('search' ,'').strip().lower()
-
-    if search_query:
-        lots = ParkingLot.query.filter(
-            ParkingLot.location_name.ilike(f'%{ search_query }%') | 
-            ParkingLot.address.ilike(f'%{ search_query }%')
-        ).all()
-    else:
-        lots = ParkingLot.query.all()
-
-    return render_template('user_dashboard.html', username=session.get('user_username'), lots=lots, search_query=search_query)
-    
-    
-
-
 #ADMIN DASHBOARD
 @app.route('/admin/dashboard' , methods = ['GET' , 'POST'])
 def admin_dashboard():
@@ -287,8 +302,3 @@ if __name__ == '__main__':
             db.session.add(default_admin)
             db.session.commit()
     app.run(debug=True)
-
-
-
-
-
